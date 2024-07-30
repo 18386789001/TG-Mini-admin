@@ -1,0 +1,205 @@
+<template>
+	<div class="system-menu-dialog-container">
+		<el-dialog :title="state.dialog.title" v-model="state.dialog.isShowDialog" width="769px">
+			<el-form ref="dialogFormRef" :model="state.ruleForm" :rules="state.ruleRules" size="default" label-width="80px">
+				<el-row :gutter="35">
+					<el-col :xs="12" :sm="24" :md="12" :lg="12" :xl="12" class="mb20">
+						<el-form-item label="图片" >
+							<Uploadimg v-model="state.ruleForm.img" :value="state.ruleForm.img" @upload="onUpload" :msg="state.msg"/>
+						</el-form-item>
+					</el-col>
+					<el-col :xs="12" :sm="24" :md="12" :lg="12" :xl="12" class="mb20">
+						<el-form-item label="视频" prop="vedio">
+							<UploadVedio v-model="state.ruleForm.vedio" :value="state.ruleForm.vedio"  @uploadvedio="onUploadvedio"  :msg="state.msg"/>
+						</el-form-item>
+					</el-col>
+					<el-col :xs="24" :sm="12" :md="12" :lg="12" :xl="12" class="mb20">
+						<el-form-item label="标题" prop="title">
+							<el-input v-model="state.ruleForm.title" placeholder="请输入标题" clearable></el-input>
+						</el-form-item>
+					</el-col>
+					
+					<el-col :xs="24" :sm="12" :md="12" :lg="12" :xl="12" class="mb20">
+						<el-form-item label="跳转地址" prop="url">
+							<el-input v-model="state.ruleForm.url" placeholder="请输入跳转地址" clearable></el-input>
+						</el-form-item>
+					</el-col>
+					<el-col :xs="24" :sm="12" :md="12" :lg="12" :xl="12" class="mb20">
+						<el-form-item label="排序" prop="sorts">
+							<el-input v-model="state.ruleForm.sorts" type="number" placeholder="排序" clearable></el-input>
+						</el-form-item>
+					</el-col>
+	
+					<el-col :xs="24" :sm="12" :md="12" :lg="12" :xl="12" class="mb20">
+						<el-form-item label="描述" prop="content">
+							<el-input type="textarea" v-model="state.ruleForm.content" placeholder="请输入描述" clearable></el-input>
+						</el-form-item>
+					</el-col>
+
+					
+					<el-col :xs="24" :sm="12" :md="12" :lg="12" :xl="12" class="mb20">
+						<el-form-item label="类型" prop="type">
+							<el-radio-group v-model="state.ruleForm.type">
+								<el-radio :label="1">首页</el-radio>
+								<el-radio :label="2">活动</el-radio>
+							</el-radio-group>
+						</el-form-item>
+					</el-col>
+					<el-col :xs="24" :sm="12" :md="12" :lg="12" :xl="12" class="mb20">
+						<el-form-item label="状态" prop="static">
+							<el-radio-group v-model="state.ruleForm.static">
+								<el-radio :label="1">正常</el-radio>
+								<el-radio :label="0">禁用</el-radio>
+							</el-radio-group>
+						</el-form-item>
+					</el-col>
+				</el-row>
+			</el-form>
+			<template #footer>
+				<span class="dialog-footer">
+					<el-button @click="onCancel" size="default">取 消</el-button>
+					<el-button type="primary" @click="onSubmit" size="default">{{ state.dialog.submitTxt }}</el-button>
+				</span>
+			</template>
+		</el-dialog>
+	</div>
+</template>
+
+<script setup lang="ts" name="systemUserForm">
+import { reactive,defineAsyncComponent, onMounted, ref ,unref,nextTick} from 'vue';
+import { getinfo,save,edit } from '/@/api/content/index';
+import {  ElMessage } from 'element-plus';
+
+const Uploadimg = defineAsyncComponent(() => import('/@/components/Upload/singleImage.vue'));
+const UploadVedio = defineAsyncComponent(() => import('/@/components/Upload/vedio.vue'));
+
+
+// 定义子组件向父组件传值/事件
+const emit = defineEmits(['refresh']);
+
+// 定义变量内容
+const dialogFormRef = ref();
+const state = reactive({
+	ruleForm: {
+		static: 1, 
+		type: 1, 
+		content: '', 
+		title:'',
+		img: '', 
+		vedio:''
+	},
+	dialog: {
+		isShowDialog: false,
+		type: '',
+		title: '',
+		submitTxt: '',
+	},
+	// 表单校验
+	ruleRules: {
+		title: [{ required: true, message: '标题不能为空', trigger: 'blur' }],
+		img: [{ required: true, message: '图片不能为空', trigger: 'blur' }],
+		sorts:[{ required: true, message: '请输入排序', trigger: 'blur' }]
+	},
+	loading: false,
+	msg:'',
+});
+
+const onUpload = (data:any) => {
+	console.log('打印图片',data)
+	state.ruleForm.img = data;
+};
+
+// 打开弹窗
+const openDialog = (type: string, row?: any) => {
+	if (type === 'edit') {
+		// 实际请走接口
+		getinfo(row.id).then((response: any) => {
+			state.ruleForm.id = response.data.id;
+			state.ruleForm.title = response.data.title;
+			state.ruleForm.content = response.data.content;
+			state.ruleForm.vedio = response.data.vedio;
+			state.ruleForm.img = response.data.img;
+			state.ruleForm.sorts = response.data.sorts;
+			
+		});
+		
+		state.dialog.title = '修改';
+		state.dialog.submitTxt = '修 改';
+	} else {
+		state.dialog.title = '新增';
+		state.dialog.submitTxt = '新 增';
+		// 清空表单，此项需加表单验证才能使用
+		nextTick(() => {
+			dialogFormRef.value.resetFields();
+			initForm();
+		});
+	}
+	state.dialog.type = type;
+	state.dialog.isShowDialog = true;
+};
+// 关闭弹窗
+const closeDialog = () => {
+	initForm();
+	state.dialog.isShowDialog = false;
+};
+const onUploadvedio = (data) => {
+	state.ruleForm.vedio = data;
+};
+// 取消
+const onCancel = () => {
+	closeDialog();
+};
+// 提交
+const onSubmit = () => {
+
+	const formWrap = unref(dialogFormRef) as any;
+	if (!formWrap) return;
+	formWrap.validate((valid: boolean) => {
+		if (valid) {
+			state.loading = true;
+			if (state.dialog.submitTxt == '新 增') {
+				save(state.ruleForm).then(() => {
+						ElMessage.success('保存成功');
+						state.loading = false;
+						closeDialog(); // 关闭弹窗
+						emit('refresh');
+					})
+					.finally(() => {
+						state.loading = false;
+					});
+				return
+			}
+			edit(state.ruleForm).then(() => {
+				ElMessage.success('操作成功');
+				state.loading = false;
+				closeDialog(); // 关闭弹窗
+				emit('refresh');
+			})
+				.finally(() => {
+					state.loading = false;
+				});
+			
+		}
+	})
+};
+// 页面加载时
+onMounted(() => {
+	
+});
+
+
+// 表单初始化，方法：`resetFields()` 无法使用
+const initForm = () => {
+	state.ruleForm.title ='';
+	state.ruleForm.img = '';
+	state.ruleForm.content = '';
+	state.ruleForm.sorts = '';
+	state.ruleForm.type = 1;
+	state.ruleForm.static = 1;
+};
+
+// 暴露变量
+defineExpose({
+	openDialog,
+});
+</script>
